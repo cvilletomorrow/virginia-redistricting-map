@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Virginia Congressional Districts — Voter Demographics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Virginia U.S. Congressional Districts — Voter Demographics</title>
 <script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Inter:wght@300;400;500;600;800&display=swap" rel="stylesheet">
 <style>
@@ -13,7 +13,6 @@
   --surface: #f5f5f5;
   --border: #d5d5d5;
   --text: #333333;
-  --text-dim: #616161;
   --text-muted: #9e9e9e;
   --water: #c9c9c9;
   --hl: #5c8ab5;
@@ -25,38 +24,118 @@
   --rep: #c0392b;
   --rep-light: #fce8e6;
   --rep-bright: #d62020;
+  /* safe area insets for notched phones */
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
-html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow: hidden; }
 
-.maps-container {
-  height: calc(100vh - 42px);
-  display: grid; grid-template-columns: 1fr;
+html, body {
+  height: 100%;
+  /* fill 100% of the visual viewport on mobile, not the layout viewport */
+  height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
 }
-.map-panel { position: relative; overflow: hidden; background: var(--water); cursor: crosshair; }
-.map-svg { width: 100%; height: 100%; display: block; }
-.district-path { stroke-linejoin: round; stroke-linecap: round; transition: fill 0.15s, stroke 0.15s; }
 
-/* ── Header label ── */
-.map-title {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 20;
-  text-align: center; padding: 12px 8px 0; pointer-events: none;
+/* ── Layout: header + map + footer stacked, all fit exactly on screen ── */
+.page-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  height: 100vh; /* fallback */
 }
-.map-title .label {
-  font-family: 'Lora', serif; font-size: 1.4rem; font-weight: 700;
+
+/* ── Top header strip ── */
+.map-header {
+  flex-shrink: 0;
+  background: #f5f5f5;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  padding: 10px 12px 8px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+}
+.map-header .label {
+  font-family: 'Lora', serif; font-size: 1.15rem; font-weight: 700;
   color: var(--text); line-height: 1.2;
-  text-shadow: 0 1px 3px rgba(245,245,245,0.9);
 }
-.map-title .sub {
-  font-size: 0.7rem; color: var(--text-muted); margin-top: 3px;
-  text-shadow: 0 1px 2px rgba(245,245,245,0.9); letter-spacing: 0.02em;
+.map-header .sub {
+  font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; letter-spacing: 0.02em;
 }
-.map-title .enacted-badge {
+.enacted-badge {
   display: inline-block;
-  font-size: 0.62rem; font-weight: 600; letter-spacing: 0.05em;
+  font-size: 0.6rem; font-weight: 600; letter-spacing: 0.05em;
   color: #fff; background: #6a8caa;
   border-radius: 3px; padding: 1px 7px; margin-top: 4px;
-  text-shadow: none;
 }
+
+/* ── Map panel: takes all remaining vertical space ── */
+.map-panel {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--water);
+  cursor: crosshair;
+  min-height: 0; /* important: lets flex child shrink */
+}
+.map-svg { width: 100%; height: 100%; display: block; }
+.district-path { stroke-linejoin: round; stroke-linecap: round; transition: fill 0.15s; }
+
+/* ── Bottom footer strip ── */
+.status-bar {
+  flex-shrink: 0;
+  height: auto;
+  min-height: 42px;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  padding-bottom: calc(6px + var(--sab));
+  gap: 8px;
+  box-shadow: 0 -1px 3px var(--shadow);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.s-hint {
+  font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0;
+}
+.s-space { flex: 1; min-width: 4px; }
+.chips { display: flex; gap: 3px; flex-shrink: 0; }
+.chip {
+  font-size: 0.68rem; padding: 4px 9px; border-radius: 4px;
+  border: 1.5px solid var(--border); color: var(--text-muted);
+  cursor: pointer; transition: all 0.12s; user-select: none;
+  font-weight: 600; white-space: nowrap; background: #fff;
+  /* big enough tap target */
+  min-height: 30px; display: flex; align-items: center;
+}
+.chip:hover, .chip:active { border-color: var(--hl); color: var(--hl); }
+.chip.active { background: var(--hl); border-color: var(--hl); color: white; }
+
+/* ── Zoom controls — always visible inside the map panel ── */
+.zoom-ctrl {
+  position: absolute;
+  bottom: 12px;
+  right: 12px; /* right side avoids left-edge safe area issues */
+  left: auto;
+  z-index: 20;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.zoom-btn {
+  width: 36px; height: 36px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid var(--border);
+  border-radius: 6px; cursor: pointer; font-size: 1.2rem;
+  color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 4px var(--shadow); user-select: none;
+  /* big tap target */
+  -webkit-tap-highlight-color: transparent;
+}
+.zoom-btn:active { color: var(--hl); border-color: var(--hl); background: #eef3fc; }
 
 /* ── Lens overlay ── */
 .lens-overlay {
@@ -66,84 +145,66 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .lens-ring { fill: none; stroke: #3a6d96; stroke-width: 1.8; opacity: 0.85; }
 .lens-crosshair { stroke: rgba(58,109,150,0.4); stroke-width: 1; stroke-dasharray: 3,4; }
 
-/* ── Popup card — fixed so it never clips on mobile ── */
+/* ── Popup: fixed, never clips ── */
 .lens-card {
   position: fixed;
   z-index: 9999;
   background: white;
   border: 1px solid var(--border);
-  border-radius: 9px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
   padding: 12px 14px;
-  width: min(224px, calc(100vw - 20px));
+  width: min(220px, calc(100vw - 24px));
   display: none;
   pointer-events: none;
   font-family: 'Inter', sans-serif;
-  max-height: calc(100vh - 20px);
+  max-height: calc(100dvh - 24px);
   overflow-y: auto;
 }
 .lens-card.show { display: block; }
 
 .lc-head { margin-bottom: 8px; }
-.lc-title { font-family: 'Lora', serif; font-size: 0.92rem; font-weight: 700; color: var(--text); }
-
-/* Race bars */
+.lc-title {
+  font-family: 'Lora', serif; font-size: 0.9rem; font-weight: 700; color: var(--text);
+  line-height: 1.3;
+}
 .lc-sec {
-  font-size: 0.6rem; font-weight: 700; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; margin-top: 2px;
+  font-size: 0.59rem; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.07em; margin: 6px 0 4px;
 }
 .race-row { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
-.race-lbl { font-size: 0.62rem; width: 54px; flex-shrink: 0; color: var(--text); }
+.race-lbl { font-size: 0.61rem; width: 52px; flex-shrink: 0; color: var(--text); }
 .race-track { flex: 1; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
 .race-fill { height: 100%; border-radius: 3px; }
-.race-pct { font-size: 0.6rem; color: var(--text-muted); width: 30px; text-align: right; flex-shrink: 0; }
-
-.lc-divider { height: 1px; background: #e8e8e8; margin: 7px 0; }
-
-/* Election rows */
+.race-pct { font-size: 0.59rem; color: var(--text-muted); width: 28px; text-align: right; flex-shrink: 0; }
+.lc-divider { height: 1px; background: #ebebeb; margin: 7px 0; }
 .elex-label {
-  font-size: 0.6rem; font-weight: 700; color: var(--text-muted);
+  font-size: 0.59rem; font-weight: 700; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px;
 }
-.elex-row { display: flex; gap: 4px; margin-bottom: 5px; }
+.elex-row { display: flex; gap: 4px; margin-bottom: 6px; }
 .elex-row:last-child { margin-bottom: 0; }
-.vote-box {
-  flex: 1; border-radius: 4px; padding: 4px 5px; text-align: center;
-}
+.vote-box { flex: 1; border-radius: 4px; padding: 4px 5px; text-align: center; }
 .vote-box.d { background: var(--dem-light); }
 .vote-box.r { background: var(--rep-light); }
 .vote-box.d.winner { background: var(--dem-bright); }
 .vote-box.r.winner { background: var(--rep-bright); }
 .vote-box.d.winner .vb-party,
 .vote-box.d.winner .vb-votes,
-.vote-box.d.winner .vb-pct { color: white !important; }
+.vote-box.d.winner .vb-pct { color: #fff !important; }
 .vote-box.r.winner .vb-party,
 .vote-box.r.winner .vb-votes,
-.vote-box.r.winner .vb-pct { color: white !important; }
-.vb-party { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.04em; }
+.vote-box.r.winner .vb-pct { color: #fff !important; }
+.vb-party { font-size: 0.57rem; font-weight: 700; letter-spacing: 0.04em; }
 .vote-box.d .vb-party { color: var(--dem); }
 .vote-box.r .vb-party { color: var(--rep); }
-.vb-votes { font-size: 0.68rem; font-weight: 600; color: var(--text); }
-.vb-pct { font-size: 0.58rem; color: var(--text-muted); }
+.vb-votes { font-size: 0.67rem; font-weight: 600; color: var(--text); }
+.vb-pct { font-size: 0.57rem; color: var(--text-muted); }
 
-/* ── Zoom ── */
-.zoom-ctrl {
-  position: absolute; bottom: 14px; left: 10px; z-index: 20;
-  display: flex; flex-direction: column; gap: 1px;
-}
-.zoom-btn {
-  width: 30px; height: 30px; background: #fff; border: 1px solid var(--border);
-  border-radius: 4px; cursor: pointer; font-size: 1.1rem; color: var(--text-muted);
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 1px 3px var(--shadow); transition: all 0.12s; user-select: none;
-}
-.zoom-btn:hover { color: var(--hl); border-color: var(--hl); }
-
-/* Labels */
+/* District labels */
 .district-label {
-  font-family: 'Inter', sans-serif; font-weight: 800;
-  fill: #3a3a3a; pointer-events: none;
-  text-anchor: middle; dominant-baseline: central;
+  font-family: 'Inter', sans-serif; font-weight: 800; fill: #3a3a3a;
+  pointer-events: none; text-anchor: middle; dominant-baseline: central;
   paint-order: stroke; stroke: rgba(245,245,245,0.95); stroke-width: 4px;
 }
 .city-label {
@@ -152,24 +213,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   paint-order: stroke; stroke: rgba(245,245,245,0.85); stroke-width: 2.5px;
   letter-spacing: 0.03em;
 }
-.city-dot { fill: #757575; stroke: rgba(245,245,245,0.8); stroke-width: 1.2; pointer-events: none; }
-
-/* ── Status bar ── */
-.status-bar {
-  height: 42px; background: #fff; border-top: 1px solid var(--border);
-  display: flex; align-items: center; padding: 0 16px; gap: 10px;
-  box-shadow: 0 -1px 3px var(--shadow); overflow-x: auto;
+.city-dot {
+  fill: #757575; stroke: rgba(245,245,245,0.8); stroke-width: 1.2; pointer-events: none;
 }
-.s-hint { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
-.s-space { flex: 1; min-width: 4px; }
-.chips { display: flex; gap: 3px; flex-shrink: 0; }
-.chip {
-  font-size: 0.7rem; padding: 3px 9px; border-radius: 4px; border: 1.5px solid var(--border);
-  color: var(--text-muted); cursor: pointer; transition: all 0.12s; user-select: none;
-  font-weight: 600; white-space: nowrap; background: #fff;
-}
-.chip:hover { border-color: var(--hl); color: var(--hl); }
-.chip.active { background: var(--hl); border-color: var(--hl); color: white; }
 
 .map-tooltip {
   position: fixed; z-index: 200; background: rgba(255,255,255,0.97);
@@ -178,30 +224,29 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   pointer-events: none; display: none; white-space: nowrap; font-weight: 500; color: var(--text);
 }
 
-@media (max-width: 768px) {
-  .maps-container { height: calc(100vh - 38px); }
-  .map-title .label { font-size: 1.15rem; }
-  .map-title .sub { font-size: 0.65rem; }
-  .zoom-ctrl { bottom: 8px; left: 6px; }
-  .zoom-btn { width: 26px; height: 26px; font-size: 0.95rem; }
-  .status-bar { height: 38px; padding: 0 10px; gap: 6px; }
-  .chip { font-size: 0.65rem; padding: 2px 7px; }
-}
-@media (max-width: 420px) {
-  .map-title .label { font-size: 1rem; }
-  .chip { font-size: 0.6rem; padding: 2px 5px; }
+/* ── Desktop tweaks ── */
+@media (min-width: 769px) {
+  .map-header .label { font-size: 1.35rem; }
+  .map-header .sub   { font-size: 0.72rem; }
+  .zoom-ctrl { right: 14px; bottom: 14px; }
+  .zoom-btn  { width: 30px; height: 30px; font-size: 1.05rem; }
+  .chip { font-size: 0.7rem; padding: 3px 9px; }
 }
 </style>
 </head>
 <body>
 
-<div class="maps-container">
+<div class="page-wrap">
+
+  <!-- Top header -->
+  <div class="map-header">
+    <div class="label">Virginia U.S. Congressional Districts</div>
+    <div class="sub">119th Congress · 11 Districts</div>
+    <div><span class="enacted-badge">Enacted 2021 · Current Map</span></div>
+  </div>
+
+  <!-- Map fills remaining height -->
   <div class="map-panel" id="panel-current">
-    <div class="map-title">
-      <div class="label">Virginia Congressional Districts</div>
-      <div class="sub">119th Congress · 11 Districts</div>
-      <div><span class="enacted-badge">Enacted 2021 · Current Map</span></div>
-    </div>
     <svg class="map-svg" id="svg-current"></svg>
     <svg class="lens-overlay" id="lens-svg"></svg>
     <div class="lens-card" id="lens-card"></div>
@@ -211,15 +256,16 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <div class="zoom-btn" onclick="resetZoom('current')">⟳</div>
     </div>
   </div>
-</div>
 
-<div class="status-bar">
-  <span class="s-hint enacted-badge">
-    Tap a district to explore racial demographics if using a mobile device
-  </span>
-  <div class="s-space"></div>
-  <div class="chips" id="chips"></div>
-</div>
+  <!-- Footer always visible -->
+  <div class="status-bar">
+    <span class="s-hint">Touch &amp; drag to explore</span>
+    <div class="s-space"></div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+</div><!-- .page-wrap -->
+
 <div class="map-tooltip" id="tooltip"></div>
 
 <script>
@@ -448,8 +494,10 @@ function drawLens(x, y, W, H) {
   lsvg.append('rect').attr('width',W).attr('height',H)
     .attr('fill','rgba(210,205,195,0.4)').attr('mask','url(#lmask)');
   lsvg.append('circle').attr('class','lens-ring').attr('cx',x).attr('cy',y).attr('r',LENS_R);
-  lsvg.append('line').attr('class','lens-crosshair').attr('x1',x-LENS_R+8).attr('y1',y).attr('x2',x+LENS_R-8).attr('y2',y);
-  lsvg.append('line').attr('class','lens-crosshair').attr('x1',x).attr('y1',y-LENS_R+8).attr('x2',x).attr('y2',y+LENS_R-8);
+  lsvg.append('line').attr('class','lens-crosshair')
+    .attr('x1',x-LENS_R+8).attr('y1',y).attr('x2',x+LENS_R-8).attr('y2',y);
+  lsvg.append('line').attr('class','lens-crosshair')
+    .attr('x1',x).attr('y1',y-LENS_R+8).attr('x2',x).attr('y2',y+LENS_R-8);
 }
 
 function voteRow(d, dk, rk, label) {
@@ -481,7 +529,7 @@ function buildCard(id) {
   ];
   return `
     <div class="lc-head">
-      <span class="lc-title">VA Congressional District ${parseInt(id)}</span>
+      <span class="lc-title">U.S. Congressional District ${parseInt(id)}</span>
     </div>
     <div class="lc-sec">Racial Composition</div>
     ${races.map(([l,p,c])=>`
@@ -496,18 +544,21 @@ function buildCard(id) {
 }
 
 function positionCard(card, clientX, clientY) {
-  const cw = card.offsetWidth  || 224;
-  const ch = card.offsetHeight || 320;
+  const cw = card.offsetWidth  || 220;
+  const ch = card.offsetHeight || 300;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const mg = 10;
+  const mg = 12;
   const r  = LENS_R + 14;
 
+  // Try right of touch, else left
   let cx = clientX + r;
   if (cx + cw > vw - mg) cx = clientX - r - cw;
   cx = Math.max(mg, Math.min(cx, vw - cw - mg));
 
-  let cy = clientY - 20;
+  // Try above touch point (so finger doesn't hide it on mobile)
+  let cy = clientY - ch - r;
+  if (cy < mg) cy = clientY + r; // flip below if not enough room above
   if (cy + ch > vh - mg) cy = vh - ch - mg;
   cy = Math.max(mg, cy);
 
